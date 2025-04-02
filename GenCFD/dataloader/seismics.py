@@ -56,6 +56,12 @@ class UnconditionalSeismic3D(Dataset):
         # Initialize cache
         self.cached_data = FixSizedDict(maxlen=10)
 
+        # Initialize parameters needed for GenCFD
+        self.out_shape = input_shape
+        self.input_channel = 1
+        self.output_channel = 1
+        self.spatial_resolution = input_shape
+
     
     def _move_to_local_scratch(self, dataset_dirpath: str, scratch_dir: str = "TMPDIR") -> str:
         """Copy the specified file to the local scratch directory if needed."""
@@ -121,7 +127,7 @@ class UnconditionalSeismic3D(Dataset):
 
         return {
             "lead_time": torch.tensor(0, dtype=torch.float32),
-            "initial_cond": torch.tensor(0, dtype=torch.float32),
+            "initial_cond": torch.zeros_like(trace_data, dtype=torch.float32),
             "target_cond": torch.tensor(trace_data, dtype=torch.float32),
         }
     

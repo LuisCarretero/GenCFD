@@ -40,6 +40,8 @@ from GenCFD.dataloader.fluid_flows_3d import (
     ConditionalTaylorGreen3D,
     ConditionalNozzle3D,
 )
+from GenCFD.dataloader.seismics import UnconditionalSeismic3D
+
 from GenCFD.dataloader.metadata import METADATA_CLASSES
 
 Tensor = torch.Tensor
@@ -107,6 +109,10 @@ def get_dataset(
     elif name == "ConditionalNozzle3D":
         dataset = ConditionalNozzle3D(metadata=metadata)
         time_cond = True
+
+    elif name == "UnconditionalSeismic3D":
+        dataset = UnconditionalSeismic3D(**metadata)
+        time_cond = False
 
     else:
         raise ValueError(f"Dataset {name} doesn't exist")

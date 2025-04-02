@@ -110,6 +110,7 @@ def add_data_options(parser: ArgumentParser):
             "ConditionalShearLayer3D",
             "ConditionalTaylorGreen3D",
             "ConditionalNozzle3D",
+            "UnconditionalSeismic3D"
         ],
         help="Name of the dataset, available choices",
     )

@@ -57,7 +57,7 @@ class UnconditionalSeismic3D(Dataset):
         self.cached_data = FixSizedDict(maxlen=10)
 
         # Initialize parameters needed for GenCFD
-        self.out_shape = input_shape
+        self.output_shape = input_shape
         self.input_channel = 1
         self.output_channel = 1
         self.spatial_resolution = input_shape
@@ -124,10 +124,11 @@ class UnconditionalSeismic3D(Dataset):
         if fname not in self.cached_data:
             self.cached_data[fname] = self._load_file(fname)
         trace_data = self.cached_data[fname][loc_idx]  # Result has shape <self.input_shape>
+        trace_data = trace_data[None, :, :, :]  # Add channel dimension
 
         return {
             "lead_time": torch.tensor(0, dtype=torch.float32),
-            "initial_cond": torch.zeros_like(trace_data, dtype=torch.float32),
+            "initial_cond": torch.zeros(trace_data.shape, dtype=torch.float32),
             "target_cond": torch.tensor(trace_data, dtype=torch.float32),
         }
     

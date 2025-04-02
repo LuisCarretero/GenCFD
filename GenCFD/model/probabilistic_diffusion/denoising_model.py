@@ -254,6 +254,7 @@ class DenoisingModel(BaseModel):
         initial_cond = batch["initial_cond"]
         target_cond = batch["target_cond"]
         time = batch["lead_time"] if self.time_cond else None
+        # print(f'{self.time_cond=}; {time=}')
 
         rand_idx_set = torch.randint(
             0,
@@ -264,6 +265,7 @@ class DenoisingModel(BaseModel):
 
         y = initial_cond[rand_idx_set]
         x = target_cond[rand_idx_set]
+        # print(f'{initial_cond.shape=}; {target_cond.shape=}; {y.shape=}; {x.shape=}')
 
         if time is not None:
             time_inputs = time[rand_idx_set]
@@ -291,6 +293,7 @@ class DenoisingModel(BaseModel):
         )
 
         if time is not None:
+            # print(f'timeNotNone: {x.shape=}; {sigma.shape=}; {y.shape=}')
             denoised = torch.stack(
                 [
                     denoise_fn(
@@ -303,6 +306,7 @@ class DenoisingModel(BaseModel):
                 ]
             )
         else:
+            # print(f'timeNone: {x.shape=}; {sigma.shape=}; {y.shape=}')
             denoised = torch.stack(
                 [
                     denoise_fn(x=noised[i], y=y[i], sigma=sigma[i])
@@ -347,6 +351,7 @@ class DenoisingModel(BaseModel):
                 if not torch.is_tensor(sigma):
                     sigma = sigma * torch.ones((x.shape[0],))
 
+                # print(f'_denoise(false): {x.shape=}; {sigma.shape=}; {y.shape=}')
                 return denoiser.forward(x=x, sigma=sigma, y=y)
 
         elif lead_time == True:
@@ -365,6 +370,7 @@ class DenoisingModel(BaseModel):
                 if not torch.is_tensor(time):
                     time = time * torch.ones((x.shape[0],))
 
+                # print(f'_denoise(true): {x.shape=}; {sigma.shape=}; {y.shape=}; {time.shape=}')
                 return denoiser.forward(x=x, sigma=sigma, y=y, time=time)
 
         else:

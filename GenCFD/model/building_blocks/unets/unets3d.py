@@ -233,7 +233,7 @@ class UNet3D(nn.Module):
             if time.ndim < 1:
                 time = time.expand(x.size(0))
 
-        if time.ndim != 1 or x.shape[0] != time.shape[0]:
+        if self.time_cond and (time.ndim != 1 or x.shape[0] != time.shape[0]):
             raise ValueError(
                 "`time` must be 1D and have the same leading (batch) dimension as x"
                 f" ({x.shape[0]})!"
@@ -358,7 +358,7 @@ class PreconditionedDenoiser3D(UNet3D, nn.Module):
         c_skip = c_skip.view(*expand_shape)
 
         inputs = c_in * x
-
+        # print(f'PreconditionedDenoiser3D.forward: {inputs.shape=}; {y.shape=}; {x.shape=}')
         if y is not None:
             # stack conditioning y
             inputs = torch.cat((inputs, y), dim=1)

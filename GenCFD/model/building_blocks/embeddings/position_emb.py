@@ -89,18 +89,18 @@ class Add2dPosEmbedding(nn.Module):
 
 
 class Add3dPosEmbedding(nn.Module):
-    """Adds a trainable 2D position embeddings to the inputs."""
+    """Adds a trainable 3D position embeddings to the inputs."""
 
     def __init__(
         self,
-        input_dim: Sequence[int],
+        in_shape: Sequence[int],
         emb_init: Callable[[Tensor, float, float], None] = nn.init.normal_,
         stddev: float = 0.02,
     ):
         super(Add3dPosEmbedding, self).__init__()
 
-        self.input_dim = input_dim
-        self.emb_dim, self.depth, self.height, self.width = input_dim
+        self.input_dim = in_shape
+        self.emb_dim, self.depth, self.height, self.width = in_shape
         self.emb_init = emb_init
         self.stddev = stddev
 

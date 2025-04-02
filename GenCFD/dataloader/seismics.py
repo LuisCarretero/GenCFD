@@ -6,10 +6,12 @@ Dataloader for seismic datasets.
 import numpy as np
 import torch
 import torch.distributed as dist
+from torch.utils.data import Dataset
 from typing import Union, Tuple, Any, List, Dict
 import os
 import shutil
 import h5py
+from numbers import Integral
 
 
 class FixSizedDict(dict):
@@ -23,7 +25,7 @@ class FixSizedDict(dict):
             self.pop(next(iter(self)))
 
 
-class UnconditionalSeismic3D:
+class UnconditionalSeismic3D(Dataset):
     """
     Implement: __len__, __getitem__, _move_to_scratch
     (normalize_input, denormalize_input, normalize_output, denormalize_output)
@@ -70,7 +72,7 @@ class UnconditionalSeismic3D:
         # Only copy if the file doesn't exist at the destination
         if not os.path.exists(dest_path) and (RANK == 0 or RANK == -1):
             print(f"Start copying {dataset_dirpath} to {dest_path}...")
-            shutil.copy(dataset_dirpath, dest_path)
+            shutil.copytree(dataset_dirpath, dest_path)
             print("Finished data copy.")
 
         if dist.is_initialized():
@@ -98,25 +100,43 @@ class UnconditionalSeismic3D:
         return trace_data
 
     
-    def __getitem__(self, index, verbose: bool = False) -> Dict[str, torch.Tensor]:
-        """Get a sample from the dataset. Holding single shard in memory and if needed load from disk."""
+    def __getitem__(self, index: Integral, verbose: bool = False) -> Dict[str, torch.Tensor]:
+        """
+        Get a sample from the dataset. Holding single shard in memory and if needed load from disk.
+        
+        Called when indexing dataset in any way directly, e.g. `dataset[0]`, `dataset[0:10]`, `dataset[[0, 1, 2]]`. 
+        Only Pytorch BatchSampler (and other classed/functions?) will automatically call `__getitems__` (sic!)
+        for batching. Therefore calling `__getitems__` internally to catch cases like `dataset[0:10]` or `dataset[[0, 1, 2]]`.
+        """
 
+        # Handle multi-index calls
+        if not isinstance(index, Integral):
+            return self.__getitems__(index)
+
+        # Load data from cache or file
         fname, loc_idx = self._idx_to_fname_and_loc(index)
-
-        if verbose: print(f"[INFO] Getting item {index} from {fname} at location {loc_idx}")
         if fname not in self.cached_data:
-            if verbose: print(f"[INFO] File not cached, loading from disk...")
             self.cached_data[fname] = self._load_file(fname)
-        else:
-            if verbose: print(f"[INFO] File cached, loading from memory...")
-
         trace_data = self.cached_data[fname][loc_idx]  # Result has shape <self.input_shape>
 
         return {
-            "lead_time": None,
-            "initial_cond": None,
+            "lead_time": torch.tensor(0, dtype=torch.float32),
+            "initial_cond": torch.tensor(0, dtype=torch.float32),
             "target_cond": torch.tensor(trace_data, dtype=torch.float32),
         }
+    
+    def __getitems__(self, indices: Union[int, slice, list]) -> List[Dict[str, torch.Tensor]]:
+        """ 
+        Used for batching. TODO: Implement batching.
+        """
+
+        assert not isinstance(indices, int), \
+            "Single integer indices are not supported. Use `__getitem__` instead."
+
+        if isinstance(indices, slice):
+            indices = range(indices.start or 0, indices.stop or len(self), indices.step or 1)
+
+        return [self.__getitem__(i) for i in indices]
     
     def __len__(self) -> int:
         return self.num_samples

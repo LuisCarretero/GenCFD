@@ -2,7 +2,8 @@
 # ignore all slurm logs
 slurm-logs
 outputs
-wandb
+# ignore wandb folder with logs and metadata
+wandb/
 
 # Don't store compiled versions of python scripts
 **/__pycache__/

@@ -20,7 +20,8 @@ import os
 from typing import Optional
 
 import torch
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
+import wandb
 import tqdm
 
 from GenCFD.train import trainers
@@ -66,16 +67,16 @@ class Callback:
         """Initializes the callback with an optional log directory for metrics."""
         self._metric_writer = None
         if log_dir:
-            self._metric_writer = SummaryWriter(log_dir=log_dir)
+            self._metric_writer = None
 
     @property
-    def metric_writer(self) -> SummaryWriter:
+    def metric_writer(self) -> wandb.sdk.wandb_run.Run:
         """Property for the metric writer."""
         assert hasattr(self, "_metric_writer")
         return self._metric_writer
 
     @metric_writer.setter
-    def metric_writer(self, writer: SummaryWriter) -> None:
+    def metric_writer(self, writer: wandb.sdk.wandb_run.Run) -> None:
         self._metric_writer = writer
 
     def on_train_begin(self, trainer: Trainer) -> None:

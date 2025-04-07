@@ -20,7 +20,8 @@ from typing import Any, Sequence, Optional
 import torch
 import torch.distributed as dist
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
+import wandb
 
 from GenCFD.utils import callbacks as cb
 from GenCFD.train import trainers
@@ -44,7 +45,7 @@ def run(
     num_batches_per_eval: int = 10,
     run_sanity_eval_batch: bool = True,
     # other configs
-    metric_writer: Optional[SummaryWriter] = None,
+    metric_writer: Optional[wandb.sdk.wandb_run.Run] = None,
     callbacks: Sequence[cb.Callback] = (),
 ) -> None:
     """Runs trainer for a training task.
@@ -143,7 +144,7 @@ def run(
         cur_step += num_steps
 
         if local_rank in [0, -1] and metric_writer:
-            metric_writer.add_scalars("train", train_metrics, cur_step)
+            wandb.log({f'train/{k}': v for k, v in train_metrics.items()})
 
         # At train/eval batch end, callbacks are called in reverse order so that
         # they are last-in-first-out, loosely resembling nested python contexts.
@@ -177,7 +178,7 @@ def run(
                 }
 
                 if local_rank in [0, -1] and metric_writer:
-                    metric_writer.add_scalars("eval", eval_metrics_to_log, cur_step)
+                    wandb.log({f'eval/{k}': v for k, v in eval_metrics_to_log.items()})
 
                 for callback in reversed(callbacks):
                     callback.on_eval_batches_end(trainer, eval_metrics)
@@ -186,4 +187,4 @@ def run(
         callback.on_train_end(trainer)
 
     if local_rank in [0, -1] and metric_writer:
-        metric_writer.flush()
+        wandb.finish()

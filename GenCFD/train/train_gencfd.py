@@ -24,7 +24,8 @@ import torch
 import torch.distributed as dist
 from torch.distributed import is_initialized
 from torch import optim
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
+import wandb
 
 from GenCFD.train import training_loop
 from GenCFD.utils.dataloader_builder import get_dataset_loader
@@ -157,7 +158,13 @@ if __name__ == "__main__":
 
     # Initialize the metric writer
     metric_writer = (
-        SummaryWriter(log_dir=savedir) if args.local_rank in {0, -1} else None
+        wandb.init(
+            project="GenCFD",
+            name=args.save_dir,
+            config=args,
+        )
+        if args.local_rank in {0, -1}
+        else None
     )
 
     training_loop.run(

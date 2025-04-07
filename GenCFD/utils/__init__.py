@@ -14,5 +14,5 @@
 """Utility library with relevant functions"""
 
 from GenCFD.utils.denoiser_utils import get_latest_checkpoint
-from GenCFD.utils.visualization_utils import plot_2d_sample
+# from GenCFD.utils.visualization_utils import plot_2d_sample
 from GenCFD.utils.model_utils import reshape_jax_torch

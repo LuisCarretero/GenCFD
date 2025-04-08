@@ -86,7 +86,13 @@ class BaseTrainer(Generic[M, S], metaclass=abc.ABCMeta):
         self.model.denoiser.train()
 
         for step in range(num_steps):
-            batch = next(batch_iter)
+            try:
+                batch = next(batch_iter)
+            except StopIteration:
+                # Reinitialize the iterator if we've exhausted the dataset
+                batch_iter = iter(self.train_dataloader)
+                batch = next(batch_iter)
+            
             batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
             metrics_update = self.train_step(batch)
 

@@ -114,9 +114,11 @@ def run(
         )
         epochs_eval_steps = epoch_eval * eval_steps_per_epoch - step_diff_eval
 
-    epoch_train = 1
-    step_diff_train = 0
-    epochs_train_steps = epoch_train * len(train_dataloader) - step_diff_train
+    epoch_train = 1  # Epoch counter
+    step_diff_train = 0  # Difference between current step and the first step of the epoch
+    epochs_train_steps = epoch_train * len(train_dataloader) - step_diff_train  # Total number of steps in the current epoch
+    last_eval_step = 0
+
 
     # Barrier before training
     if world_size > 1:
@@ -136,9 +138,12 @@ def run(
                 # Reset for random shuffling
                 train_dataloader.sampler.set_epoch(epoch_train)
 
-            train_iter = iter(train_dataloader)
-            step_diff_train += epochs_train_steps - cur_step
+            train_iter = iter(train_dataloader)  # Reinitialize training iterator
+            step_diff_train += epochs_train_steps - cur_step 
             epochs_train_steps = epoch_train * len(train_dataloader) - step_diff_train
+            
+            # Ensure we don't request more steps than available in the new epoch
+            num_steps = min(num_steps, epochs_train_steps - cur_step)
 
         train_metrics = trainer.train(train_iter, num_steps).compute()
         cur_step += num_steps
@@ -151,8 +156,11 @@ def run(
         for callback in reversed(callbacks):
             callback.on_train_batches_end(trainer, train_metrics)
 
+        print(f"[DEBUG] cur_step: {cur_step}, last_eval_step: {last_eval_step}, eval_every_steps: {eval_every_steps}")
         if run_evaluation:
-            if cur_step == total_train_steps or cur_step % eval_every_steps == 0:
+            if cur_step == total_train_steps or (cur_step - last_eval_step) >= eval_every_steps:
+                print(f"[DEBUG] Evaluating at step {cur_step}")
+                last_eval_step = cur_step
                 for callback in callbacks:
                     callback.on_eval_batches_begin(trainer)
 

@@ -95,7 +95,7 @@ class UnconditionalSeismic3D(Dataset):
 
         return self.file_list[file_idx], loc_idx
     
-    def _load_file(self, fname: str) -> np.ndarray:
+    def _load_file(self, fname: str) -> torch.Tensor:
         """Load a file from the dataset."""
 
         with h5py.File(os.path.join(self.dataset_dirpath, fname), 'r') as f:
@@ -103,7 +103,7 @@ class UnconditionalSeismic3D(Dataset):
             trace_data = np.zeros((self.samples_per_file, *self.input_shape))
             for i in range(self.samples_per_file):
                 trace_data[i] = trace_dict[f'sample{i}'][:]
-        return trace_data
+        return torch.tensor(trace_data, dtype=torch.float32)
 
     
     def __getitem__(self, index: Integral, verbose: bool = False) -> Dict[str, torch.Tensor]:
@@ -117,22 +117,26 @@ class UnconditionalSeismic3D(Dataset):
 
         # Handle multi-index calls
         if not isinstance(index, Integral):
-            return self.__getitems__(index)
+            return self.__getitems__(index, verbose=verbose)
 
         # Load data from cache or file
         fname, loc_idx = self._idx_to_fname_and_loc(index)
+        if verbose: print(f"Loading file {fname} at location {loc_idx}")
         if fname not in self.cached_data:
+            if verbose: print(f"Loading file {fname} into cache")
             self.cached_data[fname] = self._load_file(fname)
+        elif verbose: 
+            print(f"File {fname} already in cache")
         trace_data = self.cached_data[fname][loc_idx]  # Result has shape <self.input_shape>
-        trace_data = trace_data[None, :, :, :]  # Add channel dimension
+        trace_data = trace_data.unsqueeze(0)  # Add channel dimension
 
         return {
             "lead_time": torch.tensor(0, dtype=torch.float32),
             "initial_cond": torch.zeros(trace_data.shape, dtype=torch.float32),
-            "target_cond": torch.tensor(trace_data, dtype=torch.float32),
+            "target_cond": trace_data,
         }
     
-    def __getitems__(self, indices: Union[int, slice, list]) -> List[Dict[str, torch.Tensor]]:
+    def __getitems__(self, indices: Union[int, slice, list], verbose: bool = False) -> List[Dict[str, torch.Tensor]]:
         """ 
         Used for batching. TODO: Implement batching.
         """
@@ -143,7 +147,7 @@ class UnconditionalSeismic3D(Dataset):
         if isinstance(indices, slice):
             indices = range(indices.start or 0, indices.stop or len(self), indices.step or 1)
 
-        return [self.__getitem__(i) for i in indices]
+        return [self.__getitem__(i, verbose=verbose) for i in indices]
     
     def __len__(self) -> int:
         return self.num_samples

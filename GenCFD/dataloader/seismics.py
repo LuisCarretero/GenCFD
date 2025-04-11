@@ -35,8 +35,10 @@ class UnconditionalSeismic3D(Dataset):
         dataset_dirpath: str,
         move_to_local_scratch: bool = True,
         samples_per_file: int = 100,
-        trace_name: str = 'vE',
+        trace_names: List[str] = ['uE'],  # [uE, uN, uZ]
         input_shape: Tuple[int, int, int] = (32, 32, 128),  # x, y, t
+        max_files: int = None,
+        cache_size: int = 10
     ):
         # Locate dataset and move to scratch if requested
         assert os.path.exists(dataset_dirpath), f"Dataset directory {dataset_dirpath} does not exist"
@@ -46,15 +48,15 @@ class UnconditionalSeismic3D(Dataset):
             self.dataset_dirpath = dataset_dirpath
 
         # Initialize dataset parameters
-        self.trace_name = trace_name
+        self.trace_names = trace_names
         self.input_shape = input_shape
-        self.file_list = os.listdir(self.dataset_dirpath)
+        self.file_list = os.listdir(self.dataset_dirpath)[:max_files]
         self.num_files = len(self.file_list)
         self.samples_per_file = samples_per_file
         self.num_samples = self.num_files * self.samples_per_file
 
         # Initialize cache
-        self.cached_data = FixSizedDict(maxlen=10)
+        self.cached_data = FixSizedDict(maxlen=cache_size)
 
         # Initialize parameters needed for GenCFD
         self.output_shape = input_shape
@@ -96,13 +98,19 @@ class UnconditionalSeismic3D(Dataset):
         return self.file_list[file_idx], loc_idx
     
     def _load_file(self, fname: str) -> torch.Tensor:
-        """Load a file from the dataset."""
+        """
+        Load a file from the dataset.
+        
+        Returns a tensor of shape (self.samples_per_file, len(self.trace_names), *self.input_shape)
+        """
+
+        trace_data = np.zeros((self.samples_per_file, len(self.trace_names), *self.input_shape))
 
         with h5py.File(os.path.join(self.dataset_dirpath, fname), 'r') as f:
-            trace_dict = f[self.trace_name]
-            trace_data = np.zeros((self.samples_per_file, *self.input_shape))
-            for i in range(self.samples_per_file):
-                trace_data[i] = trace_dict[f'sample{i}'][:]
+            for i, trace_name in enumerate(self.trace_names):
+                trace_dict = f[trace_name]
+                for j in range(self.samples_per_file):
+                    trace_data[j, i] = trace_dict[f'sample{j}'][:]
         return torch.tensor(trace_data, dtype=torch.float32)
 
     
@@ -128,11 +136,8 @@ class UnconditionalSeismic3D(Dataset):
         elif verbose: 
             print(f"File {fname} already in cache")
         trace_data = self.cached_data[fname][loc_idx]  # Result has shape <self.input_shape>
-        trace_data = trace_data.unsqueeze(0)  # Add channel dimension
 
         return {
-            "lead_time": torch.tensor(0, dtype=torch.float32),
-            "initial_cond": torch.zeros(trace_data.shape, dtype=torch.float32),
             "target_cond": trace_data,
         }
     

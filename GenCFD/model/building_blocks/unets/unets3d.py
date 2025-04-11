@@ -33,6 +33,8 @@ from GenCFD.model.building_blocks.stacks.ustack_3d import UStack
 from GenCFD.model.building_blocks.embeddings.fourier_emb import FourierEmbedding
 from GenCFD.model.building_blocks.layers.convolutions import ConvLayer
 
+from time import sleep
+
 Tensor = torch.Tensor
 
 
@@ -358,11 +360,13 @@ class PreconditionedDenoiser3D(UNet3D, nn.Module):
         c_skip = c_skip.view(*expand_shape)
 
         inputs = c_in * x
-        # print(f'PreconditionedDenoiser3D.forward: {inputs.shape=}; {y.shape=}; {x.shape=}')
+        # print(f'PreconditionedDenoiser3D.forward: {inputs.shape=}; {x.shape=}')
         if y is not None:
             # stack conditioning y
             inputs = torch.cat((inputs, y), dim=1)
-
+        # else:
+        #     inputs = torch.cat((inputs, inputs), dim=1)
+        # print(f'PreconditionedDenoiser3D.forward: {inputs.shape=}; {x.shape=}')
         f_x = super().forward(inputs, sigma=c_noise, time=time, cond=cond)
 
         return c_skip * x + c_out * f_x

@@ -193,9 +193,10 @@ class DenoisingModel(BaseModel):
           The loss value and a tuple of training metric and mutables.
         """
 
-        y = batch["initial_cond"]
+        y = None  # torch.zeros_like(batch["target_cond"])  # batch["initial_cond"]
         x = batch["target_cond"]
-        time = batch["lead_time"] if self.time_cond else None
+        # print(f'{x.shape=}')
+        time = None  # batch["lead_time"] if self.time_cond else None
 
         batch_size = len(x)
 
@@ -251,19 +252,20 @@ class DenoisingModel(BaseModel):
           A dictionary of denoising-based evaluation metrics.
         """
 
-        initial_cond = batch["initial_cond"]
-        target_cond = batch["target_cond"]
-        time = batch["lead_time"] if self.time_cond else None
+        # Batch has dims (batch_size, channel_cnt, *input_size)
+        initial_cond = None  # torch.zeros_like(batch["target_cond"])  # batch["initial_cond"]
+        target_cond = batch["target_cond"]  # .permute(0, 2, 3, 4, 1)  # (batch_size, *input_size, channel_cnt)
+        time = None  # batch["lead_time"] if self.time_cond else None
         # print(f'{self.time_cond=}; {time=}')
 
         rand_idx_set = torch.randint(
             0,
-            initial_cond.shape[0],
+            target_cond.shape[0],
             (self.num_eval_noise_levels, self.num_eval_cases_per_lvl),
             device=self.device,
         )
 
-        y = initial_cond[rand_idx_set]
+        y = None  # initial_cond[rand_idx_set]
         x = target_cond[rand_idx_set]
         # print(f'{initial_cond.shape=}; {target_cond.shape=}; {y.shape=}; {x.shape=}')
 
@@ -298,7 +300,7 @@ class DenoisingModel(BaseModel):
                 [
                     denoise_fn(
                         x=noised[i],
-                        y=y[i],
+                        y=None,
                         sigma=sigma[i].unsqueeze(0),
                         time=time_inputs[i],
                     )
@@ -309,7 +311,7 @@ class DenoisingModel(BaseModel):
             # print(f'timeNone: {x.shape=}; {sigma.shape=}; {y.shape=}')
             denoised = torch.stack(
                 [
-                    denoise_fn(x=noised[i], y=y[i], sigma=sigma[i])
+                    denoise_fn(x=noised[i], y=None, sigma=sigma[i])
                     for i in range(self.num_eval_noise_levels)
                 ]
             )

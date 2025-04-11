@@ -71,7 +71,7 @@ class UnconditionalSeismic3D(Dataset):
 
         # Initialize parameters needed for GenCFD
         self.output_shape = input_shape
-        self.input_channel = 1
+        self.input_channel = 0
         self.output_channel = 1
         self.spatial_resolution = input_shape
 
@@ -151,7 +151,7 @@ class UnconditionalSeismic3D(Dataset):
 
         # Only copy if the file doesn't exist at the destination
         if not os.path.exists(scratch_dirpath) and (RANK == 0 or RANK == -1):
-            print(f"Copying {store_dirpath} \nto {scratch_dirpath}...")
+            print(f"Copying {store_dirpath} \nto {scratch_dirpath}")
             shutil.copytree(store_dirpath, scratch_dirpath)
             print("Finished data copy.")
 
@@ -207,19 +207,18 @@ class UnconditionalSeismic3D(Dataset):
             self.cached_data[fpath.stem] = self._load_file(fpath)
         elif verbose: 
             print(f"File {fpath} already in cache")
-        trace_data = self.cached_data[fpath.stem][loc_idx]  # Result has shape <self.input_shape>
+        trace_data = self.cached_data[fpath.stem][loc_idx]  # Result has shape (len(self.channels), *self.input_shape)
 
         if self.normalize:
             trace_data = (trace_data - self.data_mean) / self.data_std
 
-        return {
-            "target_cond": trace_data,
-        }
+        return {"target_cond": trace_data}
     
     def __getitems__(self, indices: Union[int, slice, list], verbose: bool = False) -> List[Dict[str, torch.Tensor]]:
         """ 
         Used for batching. TODO: Implement batching.
         """
+        if verbose: print(f"Getting items at indices {indices}")
 
         assert not isinstance(indices, int), \
             "Single integer indices are not supported. Use `__getitem__` instead."

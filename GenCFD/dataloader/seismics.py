@@ -58,7 +58,7 @@ class UnconditionalSeismic3D(Dataset):
         self.channels = channels
         self.input_shape = input_shape
         self.data_fpaths = sorted(  # Sort by shard no
-            list(Path(self._get_dirpath()).glob('shard*.h5')), 
+            list(Path(self._get_datapath()).glob('shard*.h5')), 
             key=lambda x: int(x.stem.split('shard')[1])
         )[:max_files]
         self.num_files = len(self.data_fpaths)
@@ -77,15 +77,15 @@ class UnconditionalSeismic3D(Dataset):
 
         # Load/calculate stats for normalization
         if self.normalize:
-            if not os.path.exists(os.path.join(self._get_dirpath(), 'norm_stats.h5')):
+            if not os.path.exists(os.path.join(self._get_datapath(), 'norm_stats.h5')):
                 if not allow_stat_calculation:
-                    raise ValueError(f'Normalization statistics not found in {self._get_dirpath()}.'
+                    raise ValueError(f'Normalization statistics not found in {self._get_datapath()}.'
                     ' Turn on allow_stat_calculation to calculate them.')           
-                print(f'Did not find normalization statistics in {self._get_dirpath()}. Calculating them...')
+                print(f'Did not find normalization statistics in {self._get_datapath()}. Calculating them...')
                 self._calculate_and_store_norm_stats()
             self._load_norm_stats()
 
-    def _get_dirpath(self):
+    def _get_datapath(self):
         if self.using_local_scratch:
             return self.scratch_dirpath
         else:
@@ -96,7 +96,7 @@ class UnconditionalSeismic3D(Dataset):
         self.data_mean = torch.zeros(len(self.channels), *self.input_shape)
         self.data_std = torch.zeros(len(self.channels), *self.input_shape)
 
-        with h5py.File(os.path.join(self._get_dirpath(), 'norm_stats.h5'), 'r') as f:
+        with h5py.File(os.path.join(self._get_datapath(), 'norm_stats.h5'), 'r') as f:
             for i, channel in enumerate(self.channels):
                 self.data_mean[i] = torch.from_numpy(f[f'{channel}_mean'][:])
                 self.data_std[i] = torch.from_numpy(f[f'{channel}_std'][:])
@@ -104,7 +104,7 @@ class UnconditionalSeismic3D(Dataset):
     def _calculate_and_store_norm_stats(self):
         """Calculate the normalization statistics for the dataset."""
 
-        print(f'Calculating normalization statistics for {self._get_dirpath()}')
+        print(f'Calculating normalization statistics for {self._get_datapath()}')
 
         all_channels = ['uE', 'uN', 'uZ']
         
@@ -114,7 +114,7 @@ class UnconditionalSeismic3D(Dataset):
         m2 = torch.zeros(len(all_channels), *self.input_shape)
         
         # Iterate through all files to calculate running statistics
-        for fpath in tqdm(list(Path(self._get_dirpath()).glob('shard*.h5')), 
+        for fpath in tqdm(list(Path(self._get_datapath()).glob('shard*.h5')), 
                 desc='Calculating normalization statistics'):
             trace_data = self._load_file(fpath, all_channels)
             cnt += trace_data.shape[0]
@@ -208,6 +208,9 @@ class UnconditionalSeismic3D(Dataset):
         elif verbose: 
             print(f"File {fpath} already in cache")
         trace_data = self.cached_data[fpath.stem][loc_idx]  # Result has shape <self.input_shape>
+
+        if self.normalize:
+            trace_data = (trace_data - self.data_mean) / self.data_std
 
         return {
             "target_cond": trace_data,

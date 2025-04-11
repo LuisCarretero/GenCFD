@@ -25,10 +25,6 @@ Tensor = torch.Tensor
 Metrics = dict  # Placeholder for metrics
 
 
-M = TypeVar("M")  # Model
-SD = TypeVar("SD", bound=train_states.DenoisingModelTrainState)
-
-
 class LightningDenoisingModel(pl.LightningModule):
     """PyTorch Lightning wrapper for the DenoisingModel"""
 
@@ -233,7 +229,7 @@ class LightningDenoisingModel(pl.LightningModule):
 
     def forward(
         self, 
-        x: Tensor, 
+        x: Tensor,
         y: Tensor, 
         sigma: Tensor, 
         time: Tensor | None = None
@@ -294,7 +290,7 @@ class LightningDenoisingModel(pl.LightningModule):
                 * ((weights * torch.square(denoised_squared - x_squared)).sum() / mask_weight.sum())
             )
         else:
-            rel_norm = torch.mean(x ** 2 / torch.mean(x_squared ** 2))
+            rel_norm = torch.mean(x ** 2 / torch.mean(x_squared ** 2))  # Fixme: This can't be right...
             loss = torch.mean(weights * torch.square(denoised - x))
             loss += (
                 self.consistent_weight

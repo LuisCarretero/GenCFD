@@ -17,8 +17,8 @@ import GenCFD.diffusion as dfn_lib
 from GenCFD.train import train_states
 from GenCFD.utils.train_utils import StdMetric
 from GenCFD.utils.gencfd_builder import create_sampler
-from GenCFD.utils.dataloader_builder import get_dataloader
-from GenCFD.utils.visualization_utils import visualize_training_samples
+from GenCFD.utils.dataloader_builder import get_dataset_loader
+from GenCFD.utils.visualization_utils import visualize_samples
 from GenCFD.utils.diffusion_utils import get_noise_weighting, get_noise_sampling
 
 Tensor = torch.Tensor
@@ -418,7 +418,7 @@ class LightningDenoisingModel(pl.LightningModule):
                 lead_time=lead_time
             )
 
-            pil_img = visualize_training_samples(
+            pil_img = visualize_samples(
                 gen_samples=gen_samples,
                 gt_samples=u,
                 batch_size=self.args.batch_size,
@@ -580,7 +580,7 @@ class LightningDenoisingModel(pl.LightningModule):
 
 
     def train_dataloader(self):
-        return get_dataloader(
+        return get_dataset_loader(
             dataset=self.train_dataset,
             args=self.args,
             name=self.args.dataset,
@@ -591,7 +591,7 @@ class LightningDenoisingModel(pl.LightningModule):
 
 
     def val_dataloader(self):
-        return get_dataloader(
+        return get_dataset_loader(
             dataset=self.eval_dataset,
             args=self.args,
             name=self.args.dataset,
